@@ -1,0 +1,12 @@
+seed_search_queries:
+  - "ski resort official site"
+  - "ski area season pass"
+  - "ski resort snow report"
+  - "ski resort official"
+max_discovered_urls: 500
+concurrency: 6
+per_domain_delay_seconds: [1.0, 3.0] # random range
+user_agent: "Mozilla/5.0 (compatible; SkiCrawler/1.0; +https://example.org/bot)"
+database_url: "sqlite:///./ski_crawler.db" # override with env var DATABASE_URL
+log_level: INFO
+max_retries: 3
