@@ -1,8 +1,8 @@
 seed_search_queries:
-  - "ski resort official site"
-  - "ski area season pass"
-  - "ski resort snow report"
-  - "ski resort official"
+  - "https://www.snowbird.com"
+  - "https://www.alta.com"
+  - "Snowbasin"
+  - "Solitude"
 max_discovered_urls: 500
 concurrency: 6
 per_domain_delay_seconds: [1.0, 3.0] # random range

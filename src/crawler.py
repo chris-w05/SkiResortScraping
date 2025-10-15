@@ -25,31 +25,71 @@ class Crawler:
         self.session.close()
 
     async def discover_urls(self):
-        # Lightweight discovery using DuckDuckGo via requests (no 3rd-party API dependency)
-        # fallback: use seed queries and parse SERPs for links
-        seeds = self.config['seed_search_queries']
+        """
+        Multi-mode discovery:
+        1. DuckDuckGo search with region/safesearch
+        2. Optional Bing API (if api_key in config)
+        3. Seed URLs from config
+        Returns a deduplicated list of URLs up to max_discovered_urls
+        """
         urls = set()
-        headers = {"User-Agent": self.config['user_agent']}
-        for q in seeds:
-            logger.info("Discovering for query: %s", q)
-            # use simple GET to ddg html search for portability
-            params = {'q': q}
-            r = requests.get("https://duckduckgo.com/html/", params=params, headers=headers, timeout=15)
-            if r.status_code == 200:
-                soup = BeautifulSoup(r.text, "lxml")
-                for a in soup.select("a.result__a, a.result__snippet"):
-                    href = a.get("href")
-                    if href:
-                        urls.add(href)
-            await sleep_random(1.0, 2.0)
-            if len(urls) >= self.config['max_discovered_urls']:
-                break
+
+        # --- 1. Seed URLs first ---
+        seed_urls = self.config.get("seed_urls", [])
+        for u in seed_urls:
+            urls.add(u)
+
+        # --- 2. DuckDuckGo search ---
+        from duckduckgo_search import DDGS
+        queries = self.config.get("seed_search_queries", [])
+        with DDGS() as ddgs:
+            for q in queries:
+                logger.info("Discovering for query: %s", q)
+                try:
+                    results = ddgs.text(q, region="wt-wt", safesearch="off", max_results=50)
+                    for r in results:
+                        href = r.get("href")
+                        if href:
+                            urls.add(href)
+                except Exception as e:
+                    logger.warning("DuckDuckGo search failed for '%s': %s", q, e)
+                await sleep_random(1.0, 2.0)
+                if len(urls) >= self.config["max_discovered_urls"]:
+                    break
+
+        # --- 3. Optional Bing API fallback ---
+        if "bing_api_key" in self.config:
+            import requests
+            headers = {"Ocp-Apim-Subscription-Key": self.config["bing_api_key"]}
+            for q in queries:
+                try:
+                    resp = requests.get(
+                        "https://api.bing.microsoft.com/v7.0/search",
+                        headers=headers,
+                        params={"q": q, "count": 50},
+                        timeout=10
+                    )
+                    for r in resp.json().get("webPages", {}).get("value", []):
+                        urls.add(r.get("url"))
+                except Exception as e:
+                    logger.warning("Bing search failed for '%s': %s", q, e)
+                await sleep_random(1.0, 2.0)
+                if len(urls) >= self.config["max_discovered_urls"]:
+                    break
+
+        # --- 4. Clean and limit results ---
+        # simple filter: keep only http/https URLs
+        urls = [u for u in urls if u.startswith("http")]
+        urls = urls[:self.config["max_discovered_urls"]]
         logger.info("Discovered %d URLs", len(urls))
-        return list(urls)[:self.config['max_discovered_urls']]
+        return urls
 
     async def process_url(self, url):
         for attempt in range(self.config['max_retries']):
-            status, html = await self.fetcher.fetch(url, render_js=True)
+            status, html, blocked = await self.fetcher.fetch(url, render_js=True)
+            if blocked:
+                logger.warning("Skipped due to robots.txt: %s", url)
+                return
             if html:
                 # store raw page
                 rp = RawPage(url=url, domain=domain_from_url(url), status_code=status, html=html)
