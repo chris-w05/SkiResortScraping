@@ -1,10 +1,20 @@
 seed_search_queries:
-  - "https://www.snowbird.com"
-  - "https://www.alta.com"
-  - "Snowbasin"
-  - "Solitude"
+  #- "https://www.skiresort.info/ski-resorts/"
+  #- "https://www.skiresort.info/ski-resorts/page/2/"  # Example pagination; extend loop for more
+  # - "https://en.wikipedia.org/wiki/List_of_ski_areas_and_resorts_in_the_United_States"
+  # - "https://en.wikipedia.org/wiki/List_of_ski_areas_and_resorts_in_Europe"
+  # - "https://www.powderhounds.com/Best-Ski-Resorts.aspx"
+  # - "https://www.snowmagazine.com/features/top-tens/the-best-ski-resorts-in-the-world"
+  - https://www.snowbird.com
+  - https://www.snowbasin.com
+additional_queries:
+  - "ski resorts in USA official website"
+  - "ski resorts in Canada official website"
+  - "ski resorts in Europe official website"
+  - "ski resorts in Japan official website"
+  - "ski resorts in Australia official website"
 max_discovered_urls: 500
-concurrency: 6
+concurrency: 12
 per_domain_delay_seconds: [1.0, 3.0] # random range
 user_agent: "Mozilla/5.0 (compatible; SkiCrawler/1.0; +https://example.org/bot)"
 database_url: "sqlite:///./ski_crawler.db" # override with env var DATABASE_URL
